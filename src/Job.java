@@ -40,10 +40,6 @@ public class Job {
         this.end = end;
     }
 
-    public boolean isFinal() {
-        return (id>100000);
-    }
-
     public int getId() {
         return id;
     }
@@ -66,5 +62,17 @@ public class Job {
 
     public int getPrepareTime() {
         return prepareTime;
+    }
+
+    public int getMachineID() {
+        return machineID;
+    }
+
+    public double getStart() {
+        return start;
+    }
+
+    public double getEnd() {
+        return end;
     }
 }

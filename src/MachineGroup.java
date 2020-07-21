@@ -1,26 +1,23 @@
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 public class MachineGroup {
-    private HashMap<Integer, HashSet<Machine>> map; // key为设备组编号；value为设备组里有的设备（Machine对象）
+    private HashMap<Integer, List<Machine>> map; // key为设备组编号；value为设备组里有的设备（Machine对象）
 
     public MachineGroup() {
         this.map = new HashMap<>();
     }
 
     public void add(int groupID, Machine machine) {
-        HashSet set = map.getOrDefault(groupID, new HashSet<>());
-        set.add(machine);
-        map.put(groupID, set);
+        List<Machine> list = map.getOrDefault(groupID, new ArrayList<>());
+        list.add(machine);
+        map.put(groupID, list);
     }
 
-    public HashSet<Machine> getByGroupID (int groupID) {
-        return map.get(groupID);
-    }
-
-    public int getGroupSize(int groupID) {
-        if (map.get(groupID)==null) return 0;
-        return map.get(groupID).size();
+    public void resetUsedTime() {
+        for (int groupID : map.keySet()) {
+            for (Machine m : map.get(groupID))
+                m.resetUsedTime();
+        }
     }
 
     public HashMap<Integer, double[]> createTimer() {    // key: groupID, value: [每个设备上次运行的截止时间]
@@ -50,7 +47,20 @@ public class MachineGroup {
         return (groupID==58 || groupID==59);
     }
 
-    public HashMap<Integer, HashSet<Machine>> getMap() {
+    public List<Machine> getByGroupID (int groupID) {
+        return map.get(groupID);
+    }
+
+    public int getGroupSize(int groupID) {
+        if (map.get(groupID)==null) return 0;
+        return map.get(groupID).size();
+    }
+
+    public Set<Integer> getGroupIDs () {
+        return map.keySet();
+    }
+
+    public HashMap<Integer, List<Machine>> getMap() {
         return map;
     }
 }
@@ -63,6 +73,19 @@ class Machine {
     public Machine(int groupID, int machineID) {
         this.groupID = groupID;
         this.machineID = machineID;
+        this.usedTime = 0d;
+    }
+
+    public void addUsedTime(double addition) {
+        this.usedTime += addition;
+    }
+
+    public void resetUsedTime() {
+        this.usedTime = 0d;
+    }
+
+    public double getUsedTime() {
+        return usedTime;
     }
 
     public int getMachineID() {

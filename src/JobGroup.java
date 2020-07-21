@@ -1,4 +1,5 @@
 import java.util.HashMap;
+import java.util.Set;
 
 // 把任务id和任务对象Job对应起来
 public class JobGroup {
@@ -22,8 +23,8 @@ public class JobGroup {
     public int size() {
         return size;
     }
-}
 
-class jobList {
-
+    public Set<Integer> keySet() {
+        return map.keySet();
+    }
 }
