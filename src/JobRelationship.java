@@ -20,6 +20,15 @@ public class JobRelationship {
         return (map.containsKey(a));
     }
 
+    public int getSuccessor(int a) {
+        for (int preIndex : map.keySet()) {
+            for (int index : map.get(preIndex)) {
+                if (a==index) return preIndex;
+            }
+        }
+        return -1;
+    }
+
     public HashSet<Integer> getPredecessor(int a) {
         return map.get(a);
     }

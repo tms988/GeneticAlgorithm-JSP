@@ -11,7 +11,7 @@ import com.yuxingwang.gantt.model.Task;
 import com.yuxingwang.gantt.ui.TimeUnit;
 
 public class GeneticAlgo {
-    private final int planedTime = 10000;
+    private final int planedTime = 26880;
     private int strategy, order;
 //    strategy：排程策略。1超过天数越小越好；2超期任务数量越少越好；3设备利用率越高越好
 //    order：排程规则，1正排；2倒排
@@ -390,6 +390,46 @@ public class GeneticAlgo {
 
     // 计算适应度
     public Result calculateFitness(Gene g) {
+        Result result;
+        if (order==1) {
+            result = positiveFitness(g);
+        }
+        else {
+            result = reverseFitness(g);
+        }
+        if (strategy==1) {
+            result.fitness = result.fulfillTime;
+        }
+        else if (strategy==2) { // 计算超期任务的数量。加权。权重按1-3天 0.3，3-7天 0.6，7-14天 1，15-30天 2，30之后 3
+            double overdue = 0;
+            for (int i=0; i<jobNumber; i++) {
+                double endTime = findEndTime(result.endTime[i]);
+                if (endTime>planedTime && jobList.get(i).get(0)>100000) {   // 六位数任务超期了
+                    if (endTime - planedTime < 3) overdue+=0.3;
+                    else if (endTime - planedTime < 7) overdue+=0.6;
+                    else if (endTime - planedTime < 14) overdue+=1;
+                    else if (endTime - planedTime < 30) overdue+=2;
+                    else overdue+=3;
+                }
+            }
+            result.fitness = overdue;
+        }
+        else if (strategy==3){  // 计算设备空闲时间越少越好=空闲比率
+            double spareTIme = 0d;
+            format(result);
+            for (int groupID : mg.getGroupIDs()) {
+                for (Machine m : mg.getByGroupID(groupID)) {
+                    spareTIme = spareTIme + (1 - m.getUsedTime() / planedTime);
+                }
+            }
+            result.fitness = spareTIme;
+            System.out.println("3: "+result.fitness);
+        }
+
+        return result;
+    }
+
+    public Result positiveFitness(Gene g) {
         Result result = new Result(jobNumber);
         int[] count = new int[jobNumber];
         HashMap<Integer, double[]> machineTimer = mg.createTimer();
@@ -411,7 +451,7 @@ public class GeneticAlgo {
                 }
                 result.startTime[index][c] = latest;
                 result.endTime[index][c] = latest + finalMissionLen;
-                result.fulfillTime = result.endTime[index][c];
+                result.fulfillTime = Math.max(result.fulfillTime, result.endTime[index][c]);
                 continue;
             }
 
@@ -444,7 +484,7 @@ public class GeneticAlgo {
             }
             else {  // 设备有空余时，前置任务还没完成，设备可以提前准备
                 result.startTime[index][c] = Math.max(result.endTime[index][c-1]-job.getPrepareTime(), machineTimer.get(mid)[nearMachine]);
-                                                      // 在设备准备完毕后正好前置任务做完
+                // 在设备准备完毕后正好前置任务做完
             }
 
             machineTimer.get(mid)[nearMachine] = result.startTime[index][c] + job.getTotalTime();
@@ -452,34 +492,65 @@ public class GeneticAlgo {
             result.endTime[index][c] = machineTimer.get(mid)[nearMachine];
             result.fulfillTime = Math.max(result.fulfillTime, machineTimer.get(mid)[nearMachine]); // 更新为最终全部完成的时间
         }
-        
-        if (strategy==1) {
-            result.fitness = result.fulfillTime;
-        }
-        else if (strategy==2) { // 计算超期任务的数量。加权。权重按1-3天 0.3，3-7天 0.6，7-14天 1，15-30天 2，30之后 3
-            double overdue = 0;
-            for (int i=0; i<jobNumber; i++) {
-                double endTime = findEndTime(result.endTime[i]);
-                if (endTime>planedTime && jobList.get(i).get(0)>100000) {   // 六位数任务超期了
-                    if (endTime - planedTime < 3) overdue+=0.3;
-                    else if (endTime - planedTime < 7) overdue+=0.6;
-                    else if (endTime - planedTime < 14) overdue+=1;
-                    else if (endTime - planedTime < 30) overdue+=2;
-                    else overdue+=3;
+
+        return result;
+    }
+
+    // 计算适应度
+    public Result reverseFitness(Gene g) {
+        Result result = new Result(jobNumber);
+        int[] count = new int[jobNumber];
+        HashMap<Integer, double[]> machineTimer = mg.createTimer(); // 从endTime开始数，距离endTime有多久
+        for (int i=chromosomeSize; i>=0; i--) {
+            int index = g.chromosome[i];
+            int c = jobList.get(index).size() - count[index] - 1; // 第index条任务链的倒数第c个任务步骤
+            Job job = getJobByPosition(index, jobList.get(index).size() - c - 1);
+            int mid = job.getmGroupID();    // 这个步骤使用的设备=machineGroupID
+            if (mid<0) { // 设备组为-1的，即六位数任务
+                result.startTime[index][c] = (finalMissionLen<planedTime) ? planedTime-finalMissionLen : 0;
+                result.endTime[index][c] = (finalMissionLen<planedTime) ? planedTime : finalMissionLen;
+                result.fulfillTime = Math.max(result.fulfillTime, result.endTime[index][c]);
+                continue;
+            }
+
+//            System.out.println("index="+index+", id="+job.getId()+", mid="+mid);
+//            for (double d : machineTimer.get(mid)) System.out.print(df.format(d)+" ");
+//            System.out.println();
+
+            int nearMachine = MachineGroup.findNearMachine(machineTimer.get(mid));
+            // TODO: 没算准备时间
+            if (count[index]==0) { // 是任务链的末尾
+                if (jr.getSuccessor(index)<0) { // 没有后继任务链时
+                    result.endTime[index][c] = (mg.isVirtual(mid)) ? planedTime : machineTimer.get(mid)[nearMachine];
+                }
+                else {// 有一个后继任务链
+                    int successor = jr.getSuccessor(index);
+                    double successStartTime = result.startTime[successor][0];
+                    result.endTime[index][c] = Math.min(successStartTime, planedTime - machineTimer.get(mid)[nearMachine]);
                 }
             }
-            result.fitness = overdue;
-        }
-        else if (strategy==3){  // 计算设备空闲时间越少越好=空闲比率
-            double spareTIme = 0d;
-            format(result);
-            for (int groupID : mg.getGroupIDs()) {
-                for (Machine m : mg.getByGroupID(groupID)) {
-                    spareTIme = spareTIme + (1 - m.getUsedTime() / planedTime);
+            else if (mg.isVirtual(mid)) { // 是虚拟设备组，有无限个可用设备。且不是任务链最末
+                result.endTime[index][c] = result.startTime[index][c+1];
+            }
+            else {
+                result.endTime[index][c] = Math.min(result.startTime[index][c+1], planedTime - machineTimer.get(mid)[nearMachine]);
+            }
+
+            machineTimer.get(mid)[nearMachine] = result.endTime[index][c] - job.getTotalTime();
+            result.useMachine[index][c] = nearMachine;
+//          如果完成所需时间比预订的结束时间更长，预订开始时间就会变成负数
+            if (result.endTime[index][c] < job.getTotalTime()) {
+                double diff = job.getTotalTime() - result.endTime[index][c];
+                for (int j=c; j<result.endTime.length; j++) {
+                    result.endTime[index][j] += diff;
+                    result.startTime[index][j] += diff;
+                    result.useMachine[index][j] -= diff;
                 }
             }
-            result.fitness = spareTIme;
-            System.out.println("3: "+result.fitness);
+            result.startTime[index][c] = result.endTime[index][c] - job.getTotalTime();
+            result.fulfillTime = Math.max(result.fulfillTime, machineTimer.get(mid)[nearMachine]); // 更新为最终全部完成的时间
+
+            count[index]++;
         }
 
         return result;
