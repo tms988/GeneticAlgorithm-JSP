@@ -73,7 +73,12 @@ public class GeneticAlgo {
             GregorianCalendar endgc = (GregorianCalendar) totalStart.clone();
             endgc.add(Calendar.HOUR, (int)(endTime/60/hourPerDay*24+1));
 //            为确保日期准确，换算成一天工作24个小时
-            tasks[i] = new Task(Integer.toString(i), start, endgc);
+            int startID = jobList.get(i).get(0);
+            int endID = jobList.get(i).get(jobList.get(i).size()-1);
+            String title;
+            if (startID==endID) title = startID+" ";
+            else title = startID+"~"+endID;
+            tasks[i] = new Task(title, start, endgc);
             tasks[i].setBackcolor(Color.CYAN);
 //            System.out.println("task["+i+"]: start="+new SimpleDateFormat("yyyyMMdd").format(start.getTime())
 //                                +", end="+new SimpleDateFormat("yyyyMMdd").format(endgc.getTime()));
@@ -378,12 +383,12 @@ public class GeneticAlgo {
             System.out.println("chromosome:");
             for(int n : g.chromosome) System.out.print(n+" ");
             System.out.println();
-            System.out.println("fulfillTIme="+df.format(g.fitness));
+            System.out.println("fitness="+df.format(g.fitness));
             System.out.println("==========================");
         }
     }
 
-    // 计算适应度，先按超过的天数/总共需要花费的天数来计算
+    // 计算适应度
     public Result calculateFitness(Gene g) {
         Result result = new Result(jobNumber);
         int[] count = new int[jobNumber];
@@ -447,6 +452,7 @@ public class GeneticAlgo {
             result.endTime[index][c] = machineTimer.get(mid)[nearMachine];
             result.fulfillTime = Math.max(result.fulfillTime, machineTimer.get(mid)[nearMachine]); // 更新为最终全部完成的时间
         }
+        
         if (strategy==1) {
             result.fitness = result.fulfillTime;
         }
