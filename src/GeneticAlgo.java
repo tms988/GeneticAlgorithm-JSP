@@ -11,16 +11,18 @@ import com.yuxingwang.gantt.model.Task;
 import com.yuxingwang.gantt.ui.TimeUnit;
 
 public class GeneticAlgo {
-    private final int planedTime = 26880;
+    public static int POSITIVE_ORDER=1, REVERSE_ORDER=2;
+
+    private int planedTime = 26880;
     private int strategy, order;
 //    strategy：排程策略。1超过天数越小越好；2超期任务数量越少越好；3设备利用率越高越好
 //    order：排程规则，1正排；2倒排
 
     private final int hourPerDay = 16;  // 一天工作16小时
     private final int finalMissionLen = 2*hourPerDay*60; // 六位数任务的时间，单位：分钟。两天
+    private final String paichengTime = "2020.8.2";
 
     private final int populationNumber = 10;    // 备选方案个数？
-    private final double crossProbability = 0.95;
     private final double mutationProbability = 0.05;
     private int mutateTime=2;  // mutate次数
     private int selectNumber=3;
@@ -80,8 +82,6 @@ public class GeneticAlgo {
             else title = startID+"~"+endID;
             tasks[i] = new Task(title, start, endgc);
             tasks[i].setBackcolor(Color.CYAN);
-//            System.out.println("task["+i+"]: start="+new SimpleDateFormat("yyyyMMdd").format(start.getTime())
-//                                +", end="+new SimpleDateFormat("yyyyMMdd").format(endgc.getTime()));
             System.out.println("task["+i+"]: start="+df.format(result.startTime[i][0])+", end="+df.format(endTime));
         }
         taskGroup.add(tasks);
@@ -212,17 +212,11 @@ public class GeneticAlgo {
                             int afterIndex = jobList.size() - 1;
                             jr.add(beforeIndex1, afterIndex);
                             jr.add(beforeIndex2, afterIndex);
-//                            System.out.print("id=" + id + ", nextid=" + nextid + ", ");
-//                            System.out.print("before1=" + beforeIndex1 + ", before2=" + beforeIndex2 + ", ");
-//                            System.out.println("after=" + afterIndex);
                         }
                         else {
                             int beforeIndex = getIndex(map.get(id));
                             int afterIndex = getIndex(map.get(nextid));
                             jr.add(beforeIndex, afterIndex);
-//                            System.out.print("!id=" + id + ", nextid=" + nextid + ", ");
-//                            System.out.print("before=" + beforeIndex + ", ");
-//                            System.out.println("after=" + afterIndex);
                         }
                     }
                     else {
@@ -275,23 +269,13 @@ public class GeneticAlgo {
             csvReader.readHeaders();    // 略过表头
             while (csvReader.readRecord()) {
                  if (Integer.parseInt(csvReader.get(2))==0 || csvReader.get(1).equals("")) { // 略过不可用和没有设备组项的
-//                     System.out.println("忽略: groupID="+csvReader.get(1)+"machineID="+csvReader.get(0)+"可用="+csvReader.get(2));
                      continue;
                 }
                 int machineID = Integer.parseInt(csvReader.get(0));
                 int groupID = Integer.parseInt(csvReader.get(1));
                 mg.add(groupID, new Machine(groupID, machineID));
-//                System.out.println("add: groupID="+groupID+" machineID="+machineID+" 可用="+csvReader.get(2));
             }
 
-//            System.out.println("machine:");
-//            for(int id : mg.getMap().keySet()) {
-//                System.out.print("id="+id+". ");
-//                for (Machine x : mg.getByGroupID(id)) {
-//                    System.out.print(x.getMachineID()+", ");
-//                }
-//                System.out.println();
-//            }
         }
         catch (IOException e) {
             System.out.println(e);
@@ -321,7 +305,7 @@ public class GeneticAlgo {
                     content[7] = job.getMachineID()+"";
                     content[8] = df.format(job.getStart())+"";
                     content[9] = df.format(job.getEnd())+"";
-                    content[10] = "2020.8.2";
+                    content[10] = paichengTime;
                     writer.writeRecord(content);
                 }
             }
@@ -423,7 +407,6 @@ public class GeneticAlgo {
                 }
             }
             result.fitness = spareTIme;
-            System.out.println("3: "+result.fitness);
         }
 
         return result;
@@ -492,13 +475,32 @@ public class GeneticAlgo {
         return result;
     }
 
-    // 计算适应度
     public Result reverseFitness(Gene g) {
+        Result r = positiveFitness(g);
+        return reverseFitness(g, r);
+    }
+
+    // 计算适应度
+    public Result reverseFitness(Gene g, Result posiRes) {
+        HashSet<Integer> posiSet = new HashSet<>();
+        for (int i=0; i<jobNumber; i++) {
+            if (findEndTime(posiRes.endTime[i]) >= planedTime) {
+                posiSet.add(i);
+            }
+        }
         Result result = new Result(jobNumber, planedTime);
         int[] count = new int[jobNumber];
         HashMap<Integer, double[]> machineTimer = mg.createTimer(); // 从endTime开始数，距离endTime有多久
         for (int i=chromosomeSize-1; i>=0; i--) {
             int index = g.chromosome[i];
+            if (posiSet.contains(index)) {
+                if (count[index]==0) {
+                    result.endTime[index] = posiRes.endTime[index];
+                    result.startTime[index] = posiRes.startTime[index];
+                    result.useMachine[index] = posiRes.useMachine[index];
+                }
+                else continue;
+            }
             int c = jobList.get(index).size() - count[index] - 1; // 第index条任务链的倒数第c个任务步骤
             Job job = getJobByPosition(index, jobList.get(index).size() - c - 1);
             int mid = job.getmGroupID();    // 这个步骤使用的设备=machineGroupID
@@ -510,35 +512,27 @@ public class GeneticAlgo {
             }
 
             int nearMachine = MachineGroup.findNearMachine(machineTimer.get(mid));
-            // TODO: 没算准备时间
+            double machineTime = planedTime - machineTimer.get(mid)[nearMachine];
             if (count[index]==0) { // 是任务链的末尾
                 if (jr.getSuccessor(index)<0) { // 没有后继任务链时
-                    result.endTime[index][c] = (mg.isVirtual(mid)) ? planedTime : planedTime - machineTimer.get(mid)[nearMachine];
+                    result.endTime[index][c] = (mg.isVirtual(mid)) ? planedTime : machineTime;
                 }
                 else {// 有一个后继任务链
                     int successor = jr.getSuccessor(index);
-                    double successStartTime = result.startTime[successor][0];
-                    result.endTime[index][c] = Math.min(successStartTime, planedTime - machineTimer.get(mid)[nearMachine]);
+                    double successStartTime = result.startTime[successor][0] +
+                                    getJobByPosition(successor, jobList.get(successor).size() - 1).getPrepareTime();
+                    result.endTime[index][c] = Math.min(successStartTime, machineTime);
                 }
             }
             else if (mg.isVirtual(mid)) { // 是虚拟设备组，有无限个可用设备。且不是任务链最末
 //                result.endTime[index][c] = result.startTime[index][c+1];
             }
             else {
-                result.endTime[index][c] = Math.min(result.endTime[index][c], planedTime - machineTimer.get(mid)[nearMachine]);
+                result.endTime[index][c] = Math.min(result.endTime[index][c], machineTime);
             }
 
             machineTimer.get(mid)[nearMachine] = result.endTime[index][c] - job.getTotalTime();
             result.useMachine[index][c] = nearMachine;
-//          如果完成所需时间比预订的结束时间更长，预订开始时间就会变成负数
-//            if (result.endTime[index][c] < job.getTotalTime()) {
-//                double diff = job.getTotalTime() - result.endTime[index][c];
-//                for (int j=c; j<result.endTime.length; j++) {
-//                    result.endTime[index][j] += diff;
-//                    result.startTime[index][j] += diff;
-//                    machineTimer.get(mid)[nearMachine] -= diff;
-//                }
-//            }
             result.startTime[index][c] = result.endTime[index][c] - job.getTotalTime();
             result.fulfillTime = Math.min(result.fulfillTime, result.startTime[index][c]); // 更新为最终全部完成的时间
 
@@ -546,12 +540,8 @@ public class GeneticAlgo {
                 result.endTime[index][c-1] = result.startTime[index][c] + job.getPrepareTime();
             }
 
-            if (index==2) System.out.println("c="+c+"id="+job.getId()
-                    +", start="+df.format(result.startTime[index][c])+", end="+df.format(result.endTime[index][c]));
-
             count[index]++;
         }
-        System.out.println("=============================");
         result.fulfillTime = planedTime - result.fulfillTime;
         return result;
     }
@@ -572,9 +562,6 @@ public class GeneticAlgo {
             gene.chromosome[a] = gene.chromosome[b];
             gene.chromosome[b] = tmp;
             i++;
-
-//            System.out.println("mutate:");
-//            System.out.println("a="+a+" ("+gene.chromosome[b]+"), b="+b+" ("+gene.chromosome[a]+")");
         }
         gene.fitness = calculateFitness(gene).fitness;
         return gene;
@@ -610,7 +597,6 @@ public class GeneticAlgo {
         } while (a==b);
         int start = Math.min(a, b);
         int end = Math.max(a, b);
-//        System.out.println("crossover: start="+start+", end="+end);
 
         int[][] implant = Arrays.copyOfRange(wzCounter1, start, end+1);
         List<int[]> child0 = new ArrayList<>(chromosomeSize);
@@ -676,17 +662,11 @@ public class GeneticAlgo {
 
         Gene bestGene = new Gene(0xffffff);
         for (Gene gene : geneSet) {
-//            System.out.println("fitness: "+bestGene.fitness+"   &   "+gene.fitness);
             if (bestGene.fitness > gene.fitness) {
                 bestGene = gene;
             }
-//            System.out.println("choose: "+ bestGene.fitness);
-//            System.out.println("=================================");
         }
         return calculateFitness(bestGene);
-//        System.out.println("calculateFitness: child");
-//        return calculateFitness(child1);
-//        return new Result(1);
     }
 
     public void format(Result result) {
@@ -698,12 +678,13 @@ public class GeneticAlgo {
                 Job job = jg.getByID(id);
                 job.setStart(result.startTime[index][c]);
                 job.setEnd(result.endTime[index][c]);
-                int pos = result.useMachine[index][c];
-//                if (job.getmGroupID()>0) {  // 跳过设备组为-1的
-//                    Machine machine = mg.getByGroupID(job.getmGroupID()).get(pos);
-//                    job.setMachineID(machine.getMachineID());
-//                    machine.addUsedTime(result.endTime[index][c] - result.startTime[index][c]);
-//                }
+                if (job.getmGroupID()>0) {  // 跳过设备组为-1的
+                    int pos = result.useMachine[index][c];
+                    if (pos>=mg.getByGroupID(job.getmGroupID()).size()) continue;
+                    Machine machine = mg.getByGroupID(job.getmGroupID()).get(pos);
+                    job.setMachineID(machine.getMachineID());
+                    machine.addUsedTime(result.endTime[index][c] - result.startTime[index][c]);
+                }
             }
         }
     }
@@ -712,18 +693,20 @@ public class GeneticAlgo {
     public static void main(String[] args) {
         String missionFilename = "F:/任务信息.csv";
         String machineFilename = "F:/设备信息.csv";
-        GeneticAlgo ga = new GeneticAlgo(1,2);
+        GeneticAlgo ga = new GeneticAlgo(3, GeneticAlgo.REVERSE_ORDER);
         ga.readMission(missionFilename);
         ga.readMachine(machineFilename);
         ga.initialPopulation();
         Result result = ga.run();
         ga.format(result);
-        String ganttFilename = "F:/ganttTest4.jpg";
+
+        Calendar c=Calendar.getInstance();
+        String ganttFilename = "F:/gantt-"+c.get(Calendar.HOUR) + "-" + c.get(Calendar.MINUTE)+".jpg";
         ga.missionGantt(result, ganttFilename);
-//        String output1 = "output.csv";
-//        String output2 = "outputmachine.csv";
-//        ga.csvMissionWriter(output1);
-//        ga.csvMachineWriter(output2);
+        String missionOutput = "任务结果32.csv";
+        String machineOutput = "设备结果32.csv";
+        ga.csvMissionWriter(missionOutput);
+        ga.csvMachineWriter(machineOutput);
 
     }
 }
