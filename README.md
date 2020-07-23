@@ -38,7 +38,7 @@
 
 2. 虚拟设备组（58、59）内有无限个设备可用。
 
-## 参数设置：
+## 排程参数：
 
 ```
 public static int POSITIVE_ORDER=1, REVERSE_ORDER=2;    // 正序为1，倒序为2
@@ -90,3 +90,25 @@ private int selectNumber=3; // 选择时的选择个数
 |68|2|338.52|
 
 * gantt.jpg：各个任务链的甘特图。一条横线代表一条任务链中所有任务。
+
+## 使用方法：
+
+* 在main()中可修改：输入输出文件名。
+
+```
+String missionFilename = "F:/任务信息.csv";
+String machineFilename = "F:/设备信息.csv";
+String missionOutput = "任务结果.csv";
+String machineOutput = "设备结果.csv";
+```
+
+* 生成的甘特图的名字：这里用的是生成图片时的时间。
+
+```
+Calendar c=Calendar.getInstance();
+String ganttFilename = "F:/gantt-"+c.get(Calendar.HOUR) + "-" + c.get(Calendar.MINUTE)+".jpg";
+```
+
+* 然后运行main()。
+
+* 依赖库：lib中的`SwiftGantt`，用于生成甘特图。

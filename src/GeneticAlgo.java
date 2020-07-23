@@ -11,7 +11,7 @@ import com.yuxingwang.gantt.model.Task;
 import com.yuxingwang.gantt.ui.TimeUnit;
 
 public class GeneticAlgo {
-    public static int POSITIVE_ORDER=1, REVERSE_ORDER=2;
+    public static int POSITIVE_ORDER=1, REVERSE_ORDER=2;    // 在main中决定
 
     private int planedTime = 26880;
     private int strategy, order;
@@ -22,7 +22,7 @@ public class GeneticAlgo {
     private final int finalMissionLen = 2*hourPerDay*60; // 六位数任务的时间，单位：分钟。两天
     private final String paichengTime = "2020.8.2";
 
-    private final int populationNumber = 10;    // 备选方案个数？
+    private final int populationNumber = 10;    // 备选方案个数
     private final double mutationProbability = 0.05;
     private int mutateTime=2;  // mutate次数
     private int selectNumber=3;
@@ -31,14 +31,13 @@ public class GeneticAlgo {
     private int chromosomeSize; // 整个任务流程长度（个数）
 
     private JobGroup jg= new JobGroup();
-    List<List<Integer>> jobList = new ArrayList<>();
-    private JobRelationship jr = new JobRelationship();
-    private MachineGroup mg = new MachineGroup();
+    List<List<Integer>> jobList = new ArrayList<>();    // 所有任务链
+    private JobRelationship jr = new JobRelationship(); // 任务链间关系
+    private MachineGroup mg = new MachineGroup();        // 所有设备组及设备
 
     private Set<Gene> geneSet = new HashSet<>();
     private Random random = new Random();
     GanttChart gantt = new GanttChart();
-    // 测试用
     DecimalFormat df = new DecimalFormat( "0.00 ");
 
     public GeneticAlgo(int strategy, int order) {
@@ -46,13 +45,10 @@ public class GeneticAlgo {
         this.order = order;
     }
 
+//    生成甘特图
     private void missionGantt(Result result, String filename) {
-        //设置甘特图的时间刻度的单位，如以星期为单位，则时间轴上的每一刻度代表一个星期：
+        // 设置甘特图的时间刻度的单位，如以星期为单位，则时间轴上的每一刻度代表一个星期
         gantt.setTimeUnit(TimeUnit.Hour);
-
-        //设置甘特图各个元素的颜色，宽度等，详细配置项请参考API文档中的Config类的说明。
-        //Config config = gantt.getConfig();
-        //config.setWorkingTimeBackColor(Color.red);
 
         GanttModel model = new GanttModel();
         // 项目开始时间和结束时间：
@@ -63,9 +59,6 @@ public class GeneticAlgo {
         model.setDeadline(totalEnd);
 
         // 一个Task对象在甘特图中表现为一条横线。
-        //每个Task对象都可以包含任意多的子Task对象，形成树状的任务模型。如果一个Task对象包含子Task,
-        //则自动成为对象组，对象组仍然是Task对象，但是在甘特图中显示为不同的形状。
-        //如下例，taskGroup就是任务组，包含了两个子任务，task1和task2：
         Task taskGroup = new Task("taskGA", totalStart, totalEnd);
         Task[] tasks = new Task[jobNumber];
         for (int i=0; i<jobNumber; i++) {
@@ -86,7 +79,7 @@ public class GeneticAlgo {
         }
         taskGroup.add(tasks);
 
-        // 指定任务之间的依赖关系。如果一项任务需要在另一项任务完成之后才能开始，那么需要将另一项任务设为此任务的前置任务。
+        // 指定任务之间的依赖关
 //        task2.addPredecessor(task1);
 
         model.addTask(taskGroup);
@@ -170,11 +163,11 @@ public class GeneticAlgo {
         return result;
     }
 
+//    读取任务信息.csv
     public void readMission(String filename) {
         HashMap<Integer, List<Integer>> map = new HashMap<>();
 //        先达成{{308,309,310,311,...，316,226776} 一行是一个队列
 //              {317,226776}}这样的list            总的用ArrayList串起来
-//        顺便看看能不能加进设备组信息
         try {
             CsvReader csvReader = new CsvReader(filename, ',', Charset.forName("UTF-8"));
             csvReader.readHeaders();    // 略过表头
@@ -237,32 +230,33 @@ public class GeneticAlgo {
             jr.createCounter(jobList, jobNumber);
 
 //            打印relationship
-            System.out.println("relationship: ");
-            for (int k : jr.getMap().keySet()) {
-                System.out.print(k + " - set: ");
-                HashSet<Integer> set = jr.getMap().get(k);
-                for (int i : set) {
-                    System.out.print(i+" ");
-                }
-                System.out.println();
-            }
+//            System.out.println("relationship: ");
+//            for (int k : jr.getMap().keySet()) {
+//                System.out.print(k + " - set: ");
+//                HashSet<Integer> set = jr.getMap().get(k);
+//                for (int i : set) {
+//                    System.out.print(i+" ");
+//                }
+//                System.out.println();
+//            }
 
-            // 打印读取到的所有任务链
-            System.out.println("from csv:");
-            for (int x=0; x<jobList.size(); x++) {
-                List<Integer> q = jobList.get(x);
-                System.out.print("index="+x+". ");
-                for (Integer i : q) {
-                    System.out.print(i+" "+jg.getByID(i).getmGroupID()+", ");
-                }
-                System.out.println();
-            }
+//            打印读取到的所有任务链
+//            System.out.println("from csv:");
+//            for (int x=0; x<jobList.size(); x++) {
+//                List<Integer> q = jobList.get(x);
+//                System.out.print("index="+x+". ");
+//                for (Integer i : q) {
+//                    System.out.print(i+" "+jg.getByID(i).getmGroupID()+", ");
+//                }
+//                System.out.println();
+//            }
         }
         catch (IOException e) {
             System.out.println(e);
         }
     }
 
+//    读取设备信息.csv
     public void readMachine(String filename) {
         try {
             CsvReader csvReader = new CsvReader(filename, ',', Charset.forName("UTF-8"));
@@ -283,6 +277,7 @@ public class GeneticAlgo {
         }
     }
 
+//    写结果（任务结果.csv）
     public void csvMissionWriter(String filename) {
         try {
             CsvWriter writer = new CsvWriter(filename, ',', Charset.forName("UTF-8"));
@@ -317,6 +312,7 @@ public class GeneticAlgo {
         }
     }
 
+//    写结果（设备信息.csv）
     public void csvMachineWriter(String filename) {
         try {
             CsvWriter writer = new CsvWriter(filename, ',', Charset.forName("UTF-8"));
@@ -340,7 +336,7 @@ public class GeneticAlgo {
         }
     }
 
-//    随机出初始解
+//    随机出一组初始解
     public void initialPopulation() {
         List<Integer> indexList = createIndexList();  // {0 1 2 2 2 2 2 2 2 2 2 3 4 ...}
         for (int i = 0; i < populationNumber; i ++) {
@@ -363,16 +359,10 @@ public class GeneticAlgo {
 
             g.fitness = calculateFitness(g).fitness;
             geneSet.add(g);
-
-            System.out.println("chromosome:");
-            for(int n : g.chromosome) System.out.print(n+" ");
-            System.out.println();
-            System.out.println("fitness="+df.format(g.fitness));
-            System.out.println("==========================");
         }
     }
 
-    // 计算适应度
+    // 按照不同排程策略计算不同适应度
     public Result calculateFitness(Gene g) {
         Result result;
         if (order==1) {
@@ -412,6 +402,7 @@ public class GeneticAlgo {
         return result;
     }
 
+//    正序计算适应度（计算各个任务的起止时间）
     public Result positiveFitness(Gene g) {
         Result result = new Result(jobNumber);
         int[] count = new int[jobNumber];
@@ -475,12 +466,13 @@ public class GeneticAlgo {
         return result;
     }
 
+//    （倒序计算适应度）
     public Result reverseFitness(Gene g) {
         Result r = positiveFitness(g);
         return reverseFitness(g, r);
     }
 
-    // 计算适应度
+//    倒序计算适应度（计算各个任务的起止时间）
     public Result reverseFitness(Gene g, Result posiRes) {
         HashSet<Integer> posiSet = new HashSet<>();
         for (int i=0; i<jobNumber; i++) {
@@ -546,6 +538,7 @@ public class GeneticAlgo {
         return result;
     }
 
+//    变异
     public Gene mutate(Gene gene) {
         List<Integer> indexList = createIndexList();
         int i = 0;
@@ -638,7 +631,10 @@ public class GeneticAlgo {
         return child;
     }
 
+//    算法主体
     public Result run() {
+        initialPopulation();
+
         for (int i = 0; i < populationNumber; i++) {
             double p = (double) random.nextInt(100) / 100.0;
             if (p < mutationProbability) {
@@ -669,6 +665,7 @@ public class GeneticAlgo {
         return calculateFitness(bestGene);
     }
 
+//    把各个任务的信息写入Job、Machine对象，用于最后导出csv
     public void format(Result result) {
         mg.resetUsedTime();
         for (int index=0; index<jobNumber; index++) {
@@ -691,23 +688,26 @@ public class GeneticAlgo {
 
 
     public static void main(String[] args) {
+//        设置输入输出文件名
         String missionFilename = "F:/任务信息.csv";
         String machineFilename = "F:/设备信息.csv";
+        String missionOutput = "任务结果.csv";
+        String machineOutput = "设备结果.csv";
+        Calendar c=Calendar.getInstance();
+        String ganttFilename = "F:/gantt-"+c.get(Calendar.HOUR) + "-" + c.get(Calendar.MINUTE)+".jpg";
+
+//      设置排程策略和规则。排程策略：1超过天数越小越好；2超期任务数量越少越好；3设备利用率越高越好。排程规则：正序POSITIVE_ORDER，倒序REVERSE_ORDER
         GeneticAlgo ga = new GeneticAlgo(3, GeneticAlgo.REVERSE_ORDER);
+
         ga.readMission(missionFilename);
         ga.readMachine(machineFilename);
-        ga.initialPopulation();
+
         Result result = ga.run();
         ga.format(result);
 
-        Calendar c=Calendar.getInstance();
-        String ganttFilename = "F:/gantt-"+c.get(Calendar.HOUR) + "-" + c.get(Calendar.MINUTE)+".jpg";
         ga.missionGantt(result, ganttFilename);
-        String missionOutput = "任务结果32.csv";
-        String machineOutput = "设备结果32.csv";
         ga.csvMissionWriter(missionOutput);
         ga.csvMachineWriter(machineOutput);
-
     }
 }
 
