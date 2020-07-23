@@ -1,25 +1,29 @@
 public class testttt {
     public static void main(String[] args) {
-        String s = "pwwkew";
-        int len = s.length();
-        int[] dp = new int[len];
-        dp[0] = 1;
-        int res = 1;
-        for (int i=1; i<len; i++) {
-            if (s.charAt(i)==s.charAt(i-1)) {
-                dp[i] = 1;
-                continue;
-            }
-            int a = s.indexOf(s.charAt(i), i-dp[i-1]);
-            if (a==-1 || a==i) {
-                dp[i] = dp[i-1]+1;
-            }
-            else { // 有重复
-                dp[i] = i-a;
-            }
-            System.out.println("dp="+dp[i]);
-            res = Math.max(res, dp[i]);
+     int[] arr = {5,7,1,3,2,6,4,8};
+     quicksort(arr, 0, arr.length);
+    }
+
+    public static void quicksort(int[] arr, int l, int r){
+        if (l<r) {
+            int pos = partition(arr, l, r);
         }
-        System.out.println(res);
+
+    }
+
+    public static int partition(int[] arr, int l, int r) {
+        int key = arr[l];
+        while (l<r) {
+            while (l<r && arr[r]>=key) r--;
+            if (l<r) {
+                arr[l] = arr[r];
+            }
+            while (l<r && arr[l]<=key) l++;
+            if (l<r) {
+                arr[r] = arr[l];
+            }
+        }
+        arr[l] = key;
+        return l;
     }
 }
