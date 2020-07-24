@@ -1,3 +1,6 @@
+/**
+ * 一个Job对应一个任务，记录了任务的各种细节，并存储排程后的结果
+ */
 public class Job {
     private int id;         // 任务编号
     private double runTime; // 运行时间
@@ -20,14 +23,17 @@ public class Job {
         this.prepareTime = prepareTime;
     }
 
+    /**
+     * @return 完成任务所需时间（开始此任务所需准备时间+任务数量*单个数量加工时间）
+     */
     public double getTotalTime() {
         return runTime*number + prepareTime;
     }
 
-    public double getSingleTime() {
-        return runTime*number;
-    }
-
+    /**
+     * 存储结果
+     * @param mID
+     */
     public void setMachineID(int mID) {
         this.machineID = mID;
     }

@@ -1,7 +1,9 @@
 import java.util.HashMap;
 import java.util.Set;
 
-// 把任务id和任务对象Job对应起来
+/**
+ * 把任务id和任务对象Job对应起来。key是任务编号，value是它对应的Job对象
+ */
 public class JobGroup {
     private HashMap<Integer, Job> map;
     private int size;

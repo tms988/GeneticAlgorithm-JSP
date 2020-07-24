@@ -45,7 +45,11 @@ public class GeneticAlgo {
         this.order = order;
     }
 
-//    生成甘特图
+    /**
+     * 根据排程结果，生成甘特图
+     * @param result 排程结果
+     * @param filename 生成甘特图片的路径
+     */
     private void missionGantt(Result result, String filename) {
         // 设置甘特图的时间刻度的单位，如以星期为单位，则时间轴上的每一刻度代表一个星期
         gantt.setTimeUnit(TimeUnit.Hour);
@@ -72,14 +76,14 @@ public class GeneticAlgo {
             int endID = jobList.get(i).get(jobList.get(i).size()-1);
             String title;
             if (startID==endID) title = startID+" ";
-            else title = startID+"~"+endID;
+            else title = startID+"~"+endID; // 任务名称。如“308~226776”
             tasks[i] = new Task(title, start, endgc);
             tasks[i].setBackcolor(Color.CYAN);
             System.out.println("task["+i+"]: start="+df.format(result.startTime[i][0])+", end="+df.format(endTime));
         }
         taskGroup.add(tasks);
 
-        // 指定任务之间的依赖关
+//         指定任务之间的依赖
 //        task2.addPredecessor(task1);
 
         model.addTask(taskGroup);
@@ -94,6 +98,12 @@ public class GeneticAlgo {
         }
     }
 
+    /**
+     * 删除列表中 值从key开始往后的所有元素，把它们放到新生成的列表中
+     * @param list 被截断的列表
+     * @param key
+     * @return 由key开始往后的所有元素组成的列表
+     */
     private List<Integer> cutArray(List<Integer> list, int key) {
         List<Integer> result = new ArrayList<>();
         int index=0;
@@ -163,7 +173,10 @@ public class GeneticAlgo {
         return result;
     }
 
-//    读取任务信息.csv
+    /**
+     * 读取任务信息.csv，给每个任务生成一个Job对象，及JobGroup。记下任务之间的后继关系。
+     * @param filename 任务信息.csv的路径
+     */
     public void readMission(String filename) {
         HashMap<Integer, List<Integer>> map = new HashMap<>();
 //        先达成{{308,309,310,311,...，316,226776} 一行是一个队列
@@ -234,9 +247,7 @@ public class GeneticAlgo {
 //            for (int k : jr.getMap().keySet()) {
 //                System.out.print(k + " - set: ");
 //                HashSet<Integer> set = jr.getMap().get(k);
-//                for (int i : set) {
-//                    System.out.print(i+" ");
-//                }
+//                for (int i : set) System.out.print(i+" ");
 //                System.out.println();
 //            }
 
@@ -245,9 +256,7 @@ public class GeneticAlgo {
 //            for (int x=0; x<jobList.size(); x++) {
 //                List<Integer> q = jobList.get(x);
 //                System.out.print("index="+x+". ");
-//                for (Integer i : q) {
-//                    System.out.print(i+" "+jg.getByID(i).getmGroupID()+", ");
-//                }
+//                for (Integer i : q) System.out.print(i+" "+jg.getByID(i).getmGroupID()+", ");
 //                System.out.println();
 //            }
         }
@@ -256,7 +265,10 @@ public class GeneticAlgo {
         }
     }
 
-//    读取设备信息.csv
+    /**
+     * 读取设备信息.csv，存到MachineGroup中
+     * @param filename 设备信息.csv的路径
+     */
     public void readMachine(String filename) {
         try {
             CsvReader csvReader = new CsvReader(filename, ',', Charset.forName("UTF-8"));
@@ -277,7 +289,10 @@ public class GeneticAlgo {
         }
     }
 
-//    写结果（任务结果.csv）
+    /**
+     * 把结果中的任务信息写入新生成的csv文件中（任务结果.csv）
+     * @param filename 任务结果.csv的路径
+     */
     public void csvMissionWriter(String filename) {
         try {
             CsvWriter writer = new CsvWriter(filename, ',', Charset.forName("UTF-8"));
@@ -312,7 +327,10 @@ public class GeneticAlgo {
         }
     }
 
-//    写结果（设备信息.csv）
+    /**
+     * 把结果中的设备已占用时间写入新生成的csv文件中（设备结果.csv）
+     * @param filename 设备结果.csv的路径
+     */
     public void csvMachineWriter(String filename) {
         try {
             CsvWriter writer = new CsvWriter(filename, ',', Charset.forName("UTF-8"));
@@ -336,7 +354,9 @@ public class GeneticAlgo {
         }
     }
 
-//    随机出一组初始解
+    /**
+     * 随机出一组初始解，存储在geneSet中
+     */
     public void initialPopulation() {
         List<Integer> indexList = createIndexList();  // {0 1 2 2 2 2 2 2 2 2 2 3 4 ...}
         for (int i = 0; i < populationNumber; i ++) {
@@ -362,7 +382,11 @@ public class GeneticAlgo {
         }
     }
 
-    // 按照不同排程策略计算不同适应度
+    /**
+     * 按照不同排程策略计算不同适应度
+     * @param g 待计算的基因
+     * @return 存储着该基因对应排程结果的Result对象
+     */
     public Result calculateFitness(Gene g) {
         Result result;
         if (order==1) {
@@ -402,7 +426,11 @@ public class GeneticAlgo {
         return result;
     }
 
-//    正序计算适应度（计算各个任务的起止时间）
+    /**
+     * 正序计算适应度（计算各个任务的起止时间）
+     * @param g 待计算的基因
+     * @return 存储着该基因对应排程结果的Result对象
+     */
     public Result positiveFitness(Gene g) {
         Result result = new Result(jobNumber);
         int[] count = new int[jobNumber];
@@ -466,13 +494,21 @@ public class GeneticAlgo {
         return result;
     }
 
-//    （倒序计算适应度）
+    /**
+     * 倒序计算适应度
+     * @param g
+     * @return
+     */
     public Result reverseFitness(Gene g) {
         Result r = positiveFitness(g);
         return reverseFitness(g, r);
     }
 
-//    倒序计算适应度（计算各个任务的起止时间）
+    /**
+     * 倒序计算适应度（计算各个任务的起止时间）
+     * @param g 待计算的基因
+     * @return 存储着该基因对应排程结果的Result对象
+     */
     public Result reverseFitness(Gene g, Result posiRes) {
         HashSet<Integer> posiSet = new HashSet<>();
         for (int i=0; i<jobNumber; i++) {
@@ -538,7 +574,11 @@ public class GeneticAlgo {
         return result;
     }
 
-//    变异
+    /**
+     * 变异：交换其中随机两个基因位的位置
+     * @param gene 待变异的基因
+     * @return 变异后的新基因
+     */
     public Gene mutate(Gene gene) {
         List<Integer> indexList = createIndexList();
         int i = 0;
@@ -560,7 +600,10 @@ public class GeneticAlgo {
         return gene;
     }
 
-    // 选择
+    /**
+     * 选择
+     * @return 被选择出的适应度最高的基因
+     */
     public Gene select() {
         List<Integer> indexList = makeList(geneSet.size());
         HashSet<Integer> set = new HashSet<>();
@@ -578,7 +621,10 @@ public class GeneticAlgo {
         return bestGene;
     }
 
-//     交叉
+    /**
+     * 交叉
+     * @return 交叉出的新结果
+     */
     private Gene crossover(Gene g1, Gene g2) {
         int[][] wzCounter1 = addCounter(g1.chromosome);
         int[][] wzCounter2 = addCounter(g2.chromosome);
@@ -631,7 +677,10 @@ public class GeneticAlgo {
         return child;
     }
 
-//    算法主体
+    /**
+     * 算法主体
+     * @return 排程最终结果
+     */
     public Result run() {
         initialPopulation();
 
@@ -665,7 +714,10 @@ public class GeneticAlgo {
         return calculateFitness(bestGene);
     }
 
-//    把各个任务的信息写入Job、Machine对象，用于最后导出csv
+    /**
+     * 把各个任务的信息写入Job、Machine对象，用于最后导出csv
+     * @param result 需要写入的排程结果
+     */
     public void format(Result result) {
         mg.resetUsedTime();
         for (int index=0; index<jobNumber; index++) {
@@ -686,7 +738,10 @@ public class GeneticAlgo {
         }
     }
 
-
+    /**
+     * 开始运行
+     * @param args
+     */
     public static void main(String[] args) {
 //        设置输入输出文件名
         String missionFilename = "F:/任务信息.csv";
